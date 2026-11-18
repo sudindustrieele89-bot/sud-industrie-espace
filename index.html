@@ -742,6 +742,11 @@ body{background:#f4f6fa!important}
     <h3 style="color:var(--blue); margin:12px 0 6px 0;">📦 J'ai à donner</h3>
     <input id="ent-don-objet" placeholder="Objet ou vêtement (ex : manteau taille M)" class="champ-form">
     <input id="ent-don-etat" placeholder="État (ex : très bon état)" class="champ-form">
+    <div style="margin:8px 0;">
+      <label for="ent-don-photo" style="font-weight:700; display:block; margin-bottom:4px;">📷 Photo (facultatif)</label>
+      <input type="file" id="ent-don-photo" accept="image/*" style="width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--surface);">
+      <small style="color:var(--mute);">Réduite automatiquement. Visible seulement du syndicat, jamais sur le site.</small>
+    </div>
     <input id="ent-don-contact" placeholder="Mail ou téléphone (visible seulement du syndicat)" class="champ-form">
     <p style="margin:10px 0 4px 0; font-weight:700;">Remise :</p>
     <label style="display:block; margin:4px 0;"><input type="radio" name="ent-don-lieu" value="Local syndical" checked> Au local syndical</label>
@@ -2299,20 +2304,28 @@ function entraideMail(type){
     lieu = document.querySelector('input[name="ent-besoin-lieu"]:checked').value;
   }
   if(!objet || !contact){ alert("Indiquez l'objet et un moyen de contact."); return; }
-  if(ENTRAIDE_URL){
-    fetch(ENTRAIDE_URL, {
-      method: "POST", mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ type: type, objet: objet, etat: etat, contact: contact, lieu: lieu })
-    }).then(() => {
-      $("ent-ok").hidden = false;
-      document.querySelectorAll("#entraide input[type=text], #entraide input:not([type=radio])").forEach(i => i.value = "");
-    }).catch(() => alert("Oups, l'envoi n'a pas abouti. Réessayez."));
-  } else {
+  if(!ENTRAIDE_URL){
     const sujet = type === "don" ? "Entraide - Je donne" : "Entraide - J'ai besoin de";
     const corps = (type === "don" ? "ENTRAIDE - JE DONNE" : "ENTRAIDE - J'AI BESOIN DE") + "\n\nObjet : " + objet +
       (etat ? "\nÉtat : " + etat : "") + "\nContact : " + contact + "\nLieu : " + lieu;
     window.location.href = "mailto:" + REGLAGES.mail + "?subject=" + encodeURIComponent(sujet) + "&body=" + encodeURIComponent(corps);
+    return;
+  }
+  const fichier = type === "don" ? $("ent-don-photo").files[0] : null;
+  const envoyer = photo => {
+    fetch(ENTRAIDE_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ type: type, objet: objet, etat: etat, contact: contact, lieu: lieu, photo: photo || "" })
+    }).then(() => {
+      $("ent-ok").hidden = false;
+      document.querySelectorAll("#entraide input:not([type=radio])").forEach(i => { i.value = ""; });
+    }).catch(() => alert("Oups, l'envoi n'a pas abouti. Réessayez."));
+  };
+  if(fichier){
+    reduirePhoto(fichier).then(envoyer).catch(() => alert("Impossible de traiter cette photo. Essayez-en une autre, ou envoyez sans photo."));
+  } else {
+    envoyer("");
   }
 }
 </script>
