@@ -193,7 +193,7 @@ body{background:#f4f6fa!important}
   <button class="tab" data-t="flash" aria-pressed="false">📸 Flash Sécurité</button>
 </div>
 <div class="tabs" style="grid-template-columns:1fr; margin-top:-8px; margin-bottom:16px;">
-  <button class="tab" data-t="qrcode" aria-pressed="false" style="border-color:var(--blue); color:var(--blue);">📱 Afficher le QR Code</button>
+  <button class="tab" data-t="entraide" aria-pressed="false" style="position:relative; background:#ffcc00; color:#16181d; border:3px solid #16181d; box-shadow:0 0 0 3px #ffcc00, 0 4px 10px rgba(0,0,0,.2); min-height:70px; font-size:1.1rem; font-weight:800;">🤝 Entraide<span style="position:absolute; top:-10px; right:-6px; background:#c8102e; color:#fff; font-size:.65rem; padding:2px 7px; border-radius:99px;">NOUVEAU</span></button>
 </div>
 <button onclick="if(navigator.share){navigator.share({title:'Sud Industrie ELE',text:'Espace salarié : droits, victoires, sondage et quiz',url:location.href})}else{navigator.clipboard.writeText(location.href).then(()=>alert('Lien copié !'))}">📤 Partager l'espace</button>
 
@@ -729,6 +729,41 @@ body{background:#f4f6fa!important}
 
   </div>
 </section>
+<!-- ONGLET ENTRAIDE -->
+<section id="entraide" hidden>
+  <div class="card">
+    <button class="btn sec" onclick="fermerPage()" style="margin-top:0; background:var(--bg); color:var(--ink); border:2px solid var(--blue);">⬅️ Retour à l'accueil</button>
+    <h2>🤝 Entraide entre collègues</h2>
+    <p style="font-size:.95rem;">Vous avez des objets ou des vêtements à donner, ou vous avez besoin de quelque chose ? Écrivez-nous : le syndicat fait le lien.</p>
+    <div style="background:var(--bg); border-radius:8px; padding:10px; font-size:.88rem; margin-bottom:12px;">
+      <strong>Règles :</strong> pas de denrées alimentaires, pas d'argent. Le syndicat ne publie aucune coordonnée et ne garantit ni l'état des objets ni l'échange.
+    </div>
+
+    <h3 style="color:var(--blue); margin:12px 0 6px 0;">📦 J'ai à donner</h3>
+    <input id="ent-don-objet" placeholder="Objet ou vêtement (ex : manteau taille M)" class="champ-form">
+    <input id="ent-don-etat" placeholder="État (ex : très bon état)" class="champ-form">
+    <input id="ent-don-contact" placeholder="Mail ou téléphone (visible seulement du syndicat)" class="champ-form">
+    <p style="margin:10px 0 4px 0; font-weight:700;">Remise :</p>
+    <label style="display:block; margin:4px 0;"><input type="radio" name="ent-don-lieu" value="Local syndical" checked> Au local syndical</label>
+    <label style="display:block; margin:4px 0;"><input type="radio" name="ent-don-lieu" value="Contact discret"> Contact discret (le syndicat organise la remise)</label>
+    <button onclick="entraideMail('don')" style="background:var(--success);">📧 Préparer mon message</button>
+
+    <h3 style="color:#c8102e; margin:18px 0 6px 0;">🙏 J'ai besoin de</h3>
+    <input id="ent-besoin-objet" placeholder="Ce qui vous manque (ex : vélo pour enfant)" class="champ-form">
+    <input id="ent-besoin-contact" placeholder="Mail ou téléphone (visible seulement du syndicat)" class="champ-form">
+    <p style="margin:10px 0 4px 0; font-weight:700;">Récupération :</p>
+    <label style="display:block; margin:4px 0;"><input type="radio" name="ent-besoin-lieu" value="Local syndical" checked> Au local syndical</label>
+    <label style="display:block; margin:4px 0;"><input type="radio" name="ent-besoin-lieu" value="Contact discret"> Contact discret</label>
+    <button onclick="entraideMail('besoin')" style="background:#c8102e;">📧 Préparer ma demande</button>
+
+    <p id="ent-ok" hidden style="background:#2e7d32; color:#fff; padding:12px; border-radius:8px; text-align:center; font-weight:bold;">✅ Merci ! Votre message est enregistré. Le syndicat vous recontactera.</p>
+    <h3 style="color:var(--blue); margin:20px 0 6px 0;">📋 Objets disponibles (anonyme)</h3>
+    <div id="ent-dons"></div>
+    <h3 style="color:#c8102e; margin:16px 0 6px 0;">🙏 Demandes en cours (anonyme)</h3>
+    <div id="ent-besoins"></div>
+    <p class="note" style="text-align:left;">🔒 Ne donnez aucune adresse personnelle ni détail intime dans les champs. Seul le syndicat voit vos coordonnées.</p>
+  </div>
+</section>
 <!-- ONGLET QR CODE -->
 <section id="qrcode" hidden>
 <button class="btn sec" onclick="fermerPage()" style="margin-top:0; background:var(--bg); color:var(--ink); border:2px solid var(--blue);">⬅️ Retour à l'accueil</button>
@@ -1063,6 +1098,7 @@ document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
   if(b.dataset.t === "photos") chargerGalerie();
   if(b.dataset.t === "videos") chargerVideos();
   if(b.dataset.t === "jeu") jeuPresenter();
+  if(b.dataset.t === "entraide") chargerEntraide();
   if(window.goatcounter) goatcounter.count({ path: "onglet-" + b.dataset.t, title: "Onglet " + b.dataset.t, event: true });
 });
 
@@ -2212,13 +2248,73 @@ function flashEnvoyer(btn){
     btn.disabled = false; btn.textContent = "📸 Envoyer le signalement";
   });
 }
-// ==================== ACCÈS DIRECT PAR LIEN (#questions, #flash) ====================
-(function(){
+// ==================== ACCÈS DIRECT PAR LIEN (#questions, #flash, #entraide) ====================
+window.addEventListener("load", function(){
   const cible = location.hash.replace("#", "");
-  if(cible === "questions" || cible === "flash"){
+  if(cible === "questions" || cible === "flash" || cible === "entraide"){
     ouvrirPage(cible);
+    if(cible === "entraide") chargerEntraide();
   }
-})();
+});
+// ==================== ENTRAIDE (feuille + liste anonyme) ====================
+// Adresse du script Entraide (à coller après déploiement). Tant qu'elle est vide, le message part par mail.
+const ENTRAIDE_URL = "https://script.google.com/macros/s/AKfycbx5lGELLzL8GFMYpx13NRYJ_86VVlkD8-53lxdtxu5SIBMHVbdegNCcVrJpxsM2HQUn/exec";
+function chargerEntraide(){
+  if(!ENTRAIDE_URL){
+    $("ent-dons").innerHTML = "<p class='note'>La liste sera disponible très prochainement.</p>";
+    $("ent-besoins").innerHTML = "";
+    return;
+  }
+  const s = document.createElement("script");
+  s.src = ENTRAIDE_URL + "?callback=entraideRecevoir&t=" + Date.now();
+  document.body.appendChild(s);
+}
+function entraideRecevoir(d){
+  const dons = (d.offres || []).filter(o => o.type === "don");
+  const besoins = (d.offres || []).filter(o => o.type !== "don");
+  const afficher = (id, liste, vide) => {
+    const box = $(id); box.innerHTML = "";
+    if(!liste.length){ box.innerHTML = "<p class='note'>" + vide + "</p>"; return; }
+    liste.forEach(o => {
+      const p = document.createElement("p");
+      p.style.cssText = "background:var(--bg); border-radius:8px; padding:8px 10px; margin:6px 0; font-size:.95rem;";
+      p.textContent = "• " + o.objet + (o.etat ? " (" + o.etat + ")" : "");
+      box.appendChild(p);
+    });
+  };
+  afficher("ent-dons", dons, "Aucun objet disponible pour le moment.");
+  afficher("ent-besoins", besoins, "Aucune demande en cours.");
+}
+function entraideMail(type){
+  let objet, etat, contact, lieu;
+  if(type === "don"){
+    objet = $("ent-don-objet").value.trim();
+    etat = $("ent-don-etat").value.trim();
+    contact = $("ent-don-contact").value.trim();
+    lieu = document.querySelector('input[name="ent-don-lieu"]:checked').value;
+  } else {
+    objet = $("ent-besoin-objet").value.trim();
+    etat = "";
+    contact = $("ent-besoin-contact").value.trim();
+    lieu = document.querySelector('input[name="ent-besoin-lieu"]:checked').value;
+  }
+  if(!objet || !contact){ alert("Indiquez l'objet et un moyen de contact."); return; }
+  if(ENTRAIDE_URL){
+    fetch(ENTRAIDE_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ type: type, objet: objet, etat: etat, contact: contact, lieu: lieu })
+    }).then(() => {
+      $("ent-ok").hidden = false;
+      document.querySelectorAll("#entraide input[type=text], #entraide input:not([type=radio])").forEach(i => i.value = "");
+    }).catch(() => alert("Oups, l'envoi n'a pas abouti. Réessayez."));
+  } else {
+    const sujet = type === "don" ? "Entraide - Je donne" : "Entraide - J'ai besoin de";
+    const corps = (type === "don" ? "ENTRAIDE - JE DONNE" : "ENTRAIDE - J'AI BESOIN DE") + "\n\nObjet : " + objet +
+      (etat ? "\nÉtat : " + etat : "") + "\nContact : " + contact + "\nLieu : " + lieu;
+    window.location.href = "mailto:" + REGLAGES.mail + "?subject=" + encodeURIComponent(sujet) + "&body=" + encodeURIComponent(corps);
+  }
+}
 </script>
 <!-- BOUTONS FIXES -->
 <button id="vo-flottant" hidden onclick="voixStop()" aria-label="Couper la voix" style="position:fixed; left:16px; bottom:calc(16px + env(safe-area-inset-bottom,0px)); width:auto; margin:0; padding:10px 16px; min-height:0; border-radius:999px; font-size:1rem; z-index:600; box-shadow:0 4px 10px rgba(0,0,0,.3); background:var(--blue);">🔇 Couper la voix</button>
